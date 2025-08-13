@@ -106,5 +106,8 @@ async def main():
     await asyncio.gather(*(client.run_until_disconnected() for client in clients))
 
 if __name__ == "__main__":
-    main()
+    import asyncio
+    asyncio.run(main())
+
+
 
