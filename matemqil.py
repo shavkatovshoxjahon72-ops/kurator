@@ -1,7 +1,7 @@
 import re
 import pytesseract
 from PIL import Image
-from telethon import TelegramClient, events
+from telethon import TelegramClient, events, errors
 from sympy import sympify
 from sympy.core.sympify import SympifyError
 import asyncio
@@ -9,8 +9,8 @@ import os
 
 channel_username = 'izatlox1'
 
-# Tesseract yo'lini sozlash (Windows uchun)
-pytesseract.pytesseract.tesseract_cmd = r"C:\Program Files\Tesseract-OCR\tesseract.exe"
+# Tesseract yo'lini sozlash (serverda bo'lmasa olib tashlash mumkin)
+# pytesseract.pytesseract.tesseract_cmd = r"/usr/bin/tesseract"
 
 accounts = [
 
@@ -47,11 +47,9 @@ async def handle_event(client):
     async def handler(event):
         raw_text = event.raw_text
 
-        # Agar matn bo‘lsa
         if raw_text.strip():
             expr = extract_expression(raw_text)
         else:
-            # Agar rasm bo‘lsa — yuklab olish
             file_path = await event.download_media()
             if file_path:
                 try:
@@ -59,7 +57,7 @@ async def handle_event(client):
                     raw_text = pytesseract.image_to_string(img)
                     expr = extract_expression(raw_text)
                 finally:
-                    os.remove(file_path)  # vaqtinchalik faylni o‘chiramiz
+                    os.remove(file_path)
             else:
                 expr = None
 
@@ -80,11 +78,25 @@ async def handle_event(client):
         except Exception as e:
             print(f"[{client.session.filename}] ⚠️ Xatolik: {e}")
 
+async def check_subscription(client, interval=60):
+    """Har interval sekundda kanalga obuna bo‘lishini tekshiradi"""
+    while True:
+        try:
+            participant = await client.get_participant(channel_username, 'me')
+            if participant:
+                print(f"[{client.session.filename}] ✅ Kanalga obuna bo‘lingan")
+        except errors.UserNotParticipantError:
+            print(f"[{client.session.filename}] ❌ Kanalga obuna emas")
+        except Exception as e:
+            print(f"[{client.session.filename}] ⚠️ Xatolik obuna tekshirishda: {e}")
+        await asyncio.sleep(interval)
 async def start_client(acc):
     client = TelegramClient(acc['session'], acc['api_id'], acc['api_hash'])
     await client.start()
     await handle_event(client)
-    print(f"🔗 {acc['session']} ulandi.")
+    # Har 60 soniyada obuna tekshiruvchi task
+    asyncio.create_task(check_subscription(client))
+    print(f"🔗 {acc['session']} ulandi va obuna tekshirish boshlandi.")
     return client
 
 async def main():
@@ -93,5 +105,5 @@ async def main():
     print("🤖 Hammasi ishga tushdi. Kanal kuzatilyapti...")
     await asyncio.gather(*(client.run_until_disconnected() for client in clients))
 
-if __name__ == "__main__":
+if name == "main":
     asyncio.run(main())
