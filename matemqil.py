@@ -105,5 +105,6 @@ async def main():
     print("🤖 Hammasi ishga tushdi. Kanal kuzatilyapti...")
     await asyncio.gather(*(client.run_until_disconnected() for client in clients))
 
-if name == "main":
-    asyncio.run(main())
+if __name__ == "__main__":
+    main()
+
